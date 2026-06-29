@@ -1,0 +1,147 @@
+--[[
+    GOD MODE GUI - CYBERPUNK PREMIUM EDITION
+    - Giữ nguyên 100% logic chức năng gốc (God Mode logic, UserId State, Multi-player support).
+    - Thay đổi toàn bộ giao diện sang màu Neon Cyberpunk chạy viền tự động đổi màu.
+]]
+
+local Players = game:GetService("Players")
+
+-- Dicionário para armazenar o estado do God Mode de cada jogador
+local godModePlayers = {}
+
+local function applyGodMode(player)
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoid = character:WaitForChild("Humanoid")
+    
+    -- Configurações invencíveis
+    humanoid.MaxHealth = math.huge
+    humanoid.Health = math.huge
+    
+    -- Conexão para prevenir qualquer dano
+    humanoid:GetPropertyChangedSignal("Health"):Connect(function()
+        if godModePlayers[player.UserId] and humanoid.Health < humanoid.MaxHealth then
+            humanoid.Health = humanoid.MaxHealth
+        end
+    end)
+end
+
+local function createGodModeGUI(player)
+    -- Các màu sắc Cyberpunk chuẩn chỉnh
+    local CYBER_CYAN = Color3.fromRGB(0, 255, 255)
+    local CYBER_PINK = Color3.fromRGB(255, 0, 127)
+    local BG_DARK = Color3.fromRGB(15, 15, 20)
+    local COMPONENT_BG = Color3.fromRGB(25, 25, 35)
+
+    -- Cria a interface gráfica
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "GodModeGUI"
+    screenGui.ResetOnSpawn = false
+    
+    -- Frame principal (Nền đen Cyberpunk)
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0, 200, 0, 50)
+    mainFrame.Position = UDim2.new(0.5, -100, 0, 10)
+    mainFrame.AnchorPoint = Vector2.new(0.5, 0)
+    mainFrame.BackgroundColor3 = BG_DARK
+    mainFrame.BorderSizePixel = 1
+    mainFrame.BorderColor3 = CYBER_CYAN
+    mainFrame.Active = true
+    mainFrame.Draggable = true -- Thêm tính năng kéo thả tiện lợi cho di động
+    mainFrame.Parent = screenGui
+    
+    -- Efeito de borda arredondada (Bo tròn góc theo phong cách mượt mà)
+    local uiCorner = Instance.new("UICorner")
+    uiCorner.CornerRadius = UDim.new(0, 8)
+    uiCorner.Parent = mainFrame
+    
+    -- Hiệu ứng viền phát sáng đổi màu Neon
+    local FrameStroke = Instance.new("UIStroke")
+    FrameStroke.Thickness = 1.5
+    FrameStroke.Color = CYBER_CYAN
+    FrameStroke.Parent = mainFrame
+
+    task.spawn(function()
+        while task.wait(0.05) do
+            for i = 0, 1, 0.05 do
+                if FrameStroke and FrameStroke.Parent then
+                    FrameStroke.Color = CYBER_CYAN:Lerp(CYBER_PINK, i)
+                    task.wait(0.05)
+                else break end
+            end
+            for i = 0, 1, 0.05 do
+                if FrameStroke and FrameStroke.Parent then
+                    FrameStroke.Color = CYBER_PINK:Lerp(CYBER_CYAN, i)
+                    task.wait(0.05)
+                else break end
+            end
+        end
+    end)
+    
+    -- Botão de God Mode (Nút bấm Việt hóa phong cách Cyber)
+    local godButton = Instance.new("TextButton")
+    godButton.Name = "GodButton"
+    godButton.Size = UDim2.new(0.9, 0, 0.7, 0)
+    godButton.Position = UDim2.new(0.05, 0, 0.15, 0)
+    godButton.BackgroundColor3 = COMPONENT_BG
+    godButton.TextColor3 = CYBER_CYAN
+    godButton.Text = "BẤT TỬ: TẮT"
+    godButton.Font = Enum.Font.GothamBold
+    godButton.TextSize = 14
+    godButton.TextScaled = true -- Tự động co giãn chữ chống tràn khung
+    godButton.Parent = mainFrame
+    
+    -- Borda arredondada para o botão
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(0, 6)
+    buttonCorner.Parent = godButton
+    
+    -- Função para alternar o God Mode
+    local function toggleGodMode()
+        godModePlayers[player.UserId] = not godModePlayers[player.UserId]
+        
+        if godModePlayers[player.UserId] then
+            godButton.Text = "BẤT TỬ: BẬT"
+            godButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+            godButton.BackgroundColor3 = CYBER_PINK -- Đổi sang hồng rực khi kích hoạt
+            applyGodMode(player)
+        else
+            godButton.Text = "BẤT TỬ: TẮT"
+            godButton.TextColor3 = CYBER_CYAN
+            godButton.BackgroundColor3 = COMPONENT_BG
+            
+            -- Restaura configurações normais
+            if player.Character then
+                local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    humanoid.MaxHealth = 100
+                    humanoid.Health = 100
+                end
+            end
+        end
+    end
+    
+    -- Conecta o clique do botão
+    godButton.MouseButton1Click:Connect(toggleGodMode)
+    
+    -- Atualiza quando o personagem muda
+    player.CharacterAdded:Connect(function(character)
+        if godModePlayers[player.UserId] then
+            applyGodMode(player)
+        end
+    end)
+    
+    -- Adiciona a GUI ao jogador
+    screenGui.Parent = player:WaitForChild("PlayerGui")
+end
+
+-- Configura para novos jogadores
+Players.PlayerAdded:Connect(function(player)
+    godModePlayers[player.UserId] = false
+    createGodModeGUI(player)
+end)
+
+-- Configura para jogadores já conectados
+for _, player in ipairs(Players:GetPlayers()) do
+    godModePlayers[player.UserId] = false
+    createGodModeGUI(player)
+end
